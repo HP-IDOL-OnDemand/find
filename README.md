@@ -1,9 +1,17 @@
 # HP Find
-[![Build Status](https://travis-ci.org/hpautonomy/find.svg?branch=master)](https://travis-ci.org/hpautonomy/find)
+[![Build Status](https://travis-ci.org/HP-IDOL-OnDemand/find.svg?branch=master)](https://travis-ci.org/HP-IDOL-OnDemand/find)
 
 HP Find is a web application backed by [IDOL OnDemand](https://www.idolondemand.com)
 
 A live preview of HP Find can be found at [find.idolondemand.com](http://find.idolondemand.com).
+
+## Fork Notice
+
+This is a fork of the original HP Find for IDOL OnDemand. [Original Repo](http://github.com/hpautonomy/find)
+
+### Added Features:
+
+* Topic Map on search.
 
 ## Key Features
 * Querying IDOL OnDemand indexes
