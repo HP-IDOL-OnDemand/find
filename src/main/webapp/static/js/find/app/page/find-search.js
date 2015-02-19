@@ -8,6 +8,7 @@ define([
     'find/app/model/entity-collection',
     'find/app/model/documents-collection',
     'find/app/model/indexes-collection',
+    'find/app/model/similar-documents-collection',
     'find/app/router',
     'find/app/vent',
     'i18n!find/nls/bundle',
@@ -16,13 +17,14 @@ define([
     'text!find/templates/app/page/suggestions-container.html',
     'text!find/templates/app/page/loading-spinner.html',
     'text!find/templates/app/page/colorbox-controls.html',
+    'text!find/templates/app/page/colorbox-result.html',
+    'text!find/templates/app/page/similar-doc.html',
     'text!find/templates/app/page/index-popover.html',
     'text!find/templates/app/page/index-popover-contents.html',
     'text!find/templates/app/page/top-results-popover-contents.html',
     'colorbox'
-], function(BasePage, EntityCollection, DocumentsCollection, IndexesCollection, router, vent, i18n, template, resultsTemplate,
-            suggestionsTemplate, loadingSpinnerTemplate, colorboxControlsTemplate, indexPopover, indexPopoverContents, topResultsPopoverContents) {
-
+], function(BasePage, EntityCollection, DocumentsCollection, IndexesCollection, SimilarDocumentsCollection, router, vent, i18n, template, resultsTemplate,
+            suggestionsTemplate, loadingSpinnerTemplate, colorboxControlsTemplate, colorboxResultTemplate, similarDocTemplate,indexPopover, indexPopoverContents, topResultsPopoverContents) {
     return BasePage.extend({
 
         template: _.template(template),
@@ -74,10 +76,12 @@ define([
             this.documentsCollection = new DocumentsCollection();
             this.topResultsCollection = new DocumentsCollection();
             this.indexesCollection = new IndexesCollection();
+            this.similarDocumentsCollection = new SimilarDocumentsCollection();
 
             router.on('route:search', function(text) {
                 this.entityCollection.reset();
                 this.documentsCollection.set([]);
+                this.similarDocumentsCollection.set([]);
 
                 if (text) {
                     this.$('.find-input').val(text); //when clicking one of the suggested search links
@@ -184,6 +188,19 @@ define([
                 this.$('.main-results-content .no-results').remove();
             });
 
+
+            this.listenTo(this.similarDocumentsCollection, 'add', function(model) {
+              var relateddoc = $(_.template(similarDocTemplate,{
+                reference:model.get('reference'),
+                title: model.get('title'),
+                summary: model.get('summary')
+              }))
+              console.log(relateddoc)
+              console.log($('.relatedDocs .js-list'))
+              $('.relatedDocs .js-list').append(relateddoc)
+
+            })
+
             this.listenTo(this.documentsCollection, 'add', function(model) {
                 var reference = model.get('reference');
                 var summary = model.get('summary');
@@ -201,6 +218,23 @@ define([
 
                 this.$('.main-results-content').append($newResult);
 
+                var colorboxresult= _.template(colorboxResultTemplate, {
+                  source: reference
+                })
+
+                $newResult.find('.result-header').colorbox({
+                    html: colorboxresult,
+                    width:'90%',
+                    height:'90%',
+                    rel: 'results',
+                    current: '{current} of {total}',
+                    onComplete: _.bind(function() {
+                        this.similarDocRequest(reference)
+                        $('#cboxPrevious, #cboxNext').remove(); //removing default colorbox nav buttons
+                    }, this)
+                });
+
+                /*
                 $newResult.find('.result-header').colorbox({
                     iframe: true,
                     width:'70%',
@@ -212,6 +246,7 @@ define([
                         $('#cboxPrevious, #cboxNext').remove(); //removing default colorbox nav buttons
                     }, this)
                 });
+                */
 
                 $newResult.find('.dots').click(function (e) {
                     e.preventDefault();
@@ -292,6 +327,17 @@ define([
             this.$('.popover').remove();
         },
 
+        similarDocRequest: function(input) {
+          this.similarDocumentsCollection.fetch({
+              data: {
+                  reference: input,
+                  max_results: 3,
+                  summary: 'quick',
+                  index: this.index
+              }
+          },this)
+        }
+        ,
         searchRequest: function(input) {
             if (this.index) {
                 this.documentsCollection.fetch({
