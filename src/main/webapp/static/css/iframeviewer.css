@@ -1,0 +1,34 @@
+.iframeViewer-fill {
+    width: 100%;
+    height: 100%;
+    border: 0 none;
+    box-sizing: border-box;
+    display: block;
+    position: relative;
+}
+
+.iframeViewer-main {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.iframeViewer-extra {
+    display: none;
+}
+
+.iframeViewer-withExtra .iframeViewer-main {
+    bottom: 40px;
+}
+
+.iframeViewer-withExtra .iframeViewer-extra {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 40px;
+    border-top: 1px solid rgba(0, 0, 0, 0.2);
+}
