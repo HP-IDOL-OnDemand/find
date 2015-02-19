@@ -12,6 +12,7 @@ This is a fork of the original HP Find for IDOL OnDemand. [Original Repo](http:/
 ### Added Features:
 
 * Topic Map on search.
+* Clicking a document will show similar documents.
 
 ## Key Features
 * Querying IDOL OnDemand indexes
