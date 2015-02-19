@@ -9,6 +9,8 @@ define([
     'find/app/model/documents-collection',
     'find/app/model/indexes-collection',
     'find/app/model/similar-documents-collection',
+    'find/app/model/fields-model',
+    'find/app/model/fieldvalues-model',
     'find/app/router',
     'find/app/vent',
     'i18n!find/nls/bundle',
@@ -22,9 +24,14 @@ define([
     'text!find/templates/app/page/index-popover.html',
     'text!find/templates/app/page/index-popover-contents.html',
     'text!find/templates/app/page/top-results-popover-contents.html',
+    'text!find/templates/app/page/parametric-container.html',
+    'text!find/templates/app/page/parametric-value-container.html',
+    'text!find/templates/app/page/adverts.html',
     'colorbox'
-], function(BasePage, EntityCollection, DocumentsCollection, IndexesCollection, SimilarDocumentsCollection, router, vent, i18n, template, resultsTemplate,
-            suggestionsTemplate, loadingSpinnerTemplate, colorboxControlsTemplate, colorboxResultTemplate, similarDocTemplate,indexPopover, indexPopoverContents, topResultsPopoverContents) {
+], function(BasePage, EntityCollection, DocumentsCollection, IndexesCollection,SimilarDocumentsCollection, FieldsModel, FieldValuesModel, router, vent, i18n, template, resultsTemplate,
+            suggestionsTemplate, loadingSpinnerTemplate, colorboxControlsTemplate, indexPopover, indexPopoverContents, topResultsPopoverContents, parametricContainer,
+            paramValContainer, advertsTemplate) {
+
     return BasePage.extend({
 
         template: _.template(template),
@@ -34,6 +41,9 @@ define([
         indexPopover: _.template(indexPopover),
         indexPopoverContents: _.template(indexPopoverContents),
         topResultsPopoverContents: _.template(topResultsPopoverContents),
+        parametricContainer: _.template(parametricContainer),
+        paramValContainer: _.template(paramValContainer),
+        advertsTemplate: _.template(advertsTemplate),
 
         events: {
             'keyup .find-input': 'keyupAnimation',
@@ -68,6 +78,14 @@ define([
             'mouseleave .entity-to-summary': function() {
                 this.$('.suggestions-content li a').removeClass('label label-primary entity-to-summary');
                 this.$('.main-results-content .entity-to-summary').removeClass('label-primary').addClass('label-info');
+            },
+            'click .parametric-field-name': function(e) {
+                if ($(e.currentTarget).siblings('.parametric-values').css('display') == "none" ) {
+                    $(e.currentTarget).siblings('.parametric-values').show();
+                }else {
+                    $(e.currentTarget).siblings('.parametric-values').hide();
+                }
+
             }
         },
 
@@ -77,6 +95,8 @@ define([
             this.topResultsCollection = new DocumentsCollection();
             this.indexesCollection = new IndexesCollection();
             this.similarDocumentsCollection = new SimilarDocumentsCollection();
+            this.fieldsModel = new FieldsModel();
+            this.fieldValuesModel = new FieldValuesModel();
 
             router.on('route:search', function(text) {
                 this.entityCollection.reset();
@@ -186,6 +206,9 @@ define([
                 }
 
                 this.$('.main-results-content .no-results').remove();
+
+                this.$('.adverts-container').append(_.template(advertsTemplate))
+
             });
 
 
@@ -204,10 +227,13 @@ define([
             this.listenTo(this.documentsCollection, 'add', function(model) {
                 var reference = model.get('reference');
                 var summary = model.get('summary');
+                var description = model.get('description');
 
-                summary = this.addLinksToSummary(summary);
-
-                this.$('.main-results-content .loading-spinner').remove();
+                if(description.length < 100){
+                    summary = this.addLinksToSummary(summary);
+                }else {
+                    summary = this.addLinksToSummary(description);
+                }
 
                 var $newResult = $(_.template(resultsTemplate ,{
                     title: model.get('title'),
@@ -252,6 +278,7 @@ define([
                     e.preventDefault();
                     $newResult.find('.result-header').trigger('click'); //dot-dot-dot triggers the colorbox event
                 });
+
             });
 
             this.listenTo(this.documentsCollection, 'remove', function(model) {
@@ -265,6 +292,41 @@ define([
                     this.$('.main-results-content .loading-spinner').remove();
                     this.$('.main-results-content').append(this.noResultsTemplate({i18n: i18n}));
                 }
+            });
+
+            /*parametric filters*/
+            this.listenTo(this.fieldValuesModel, 'change', function(model) {
+                var fields = model.keys();
+
+                _.each(fields, function(field) {
+                    var values = model.get(field);
+                    this.$('[data-fieldName="'+field+'"]').empty();
+
+                    _.each(_.pairs(values), function(value){
+                        this.$('[data-fieldName="'+field+'"]').append(_.template(paramValContainer, {
+                            value : value
+                        }));
+                        if (_.indexOf(this.fieldTextParams[field], value[0]) > -1) {
+                            this.$('[data-fieldValue="'+value[0]+'"]').find('input').prop('checked', true);
+                        }
+                    }, this);
+
+                }, this);
+            });
+
+            this.listenTo(this.fieldsModel, 'change', function(model) {
+                var fields = model.get("all_fields");
+
+                this.$('.parametric-filters').append(_.template(parametricContainer, {
+                    fields: fields
+                }));
+
+                var fieldName = _.map(fields, function(field) {
+                    return field.replace("DOCUMENT/","");
+                }).join(',')
+
+                this.parametricRequest(this.$('.find-input').val(),fieldName);
+
             });
 
             /*colorbox fancy button override*/
@@ -339,22 +401,44 @@ define([
         }
         ,
         searchRequest: function(input) {
+            //
+            this.fieldText = this.buildFieldTextFromParams();
             if (this.index) {
                 this.documentsCollection.fetch({
                     data: {
                         text: input,
+                        fieldtext: this.fieldText,
                         max_results: 30,
                         summary: 'quick',
-                        index: this.index
+                        index: this.index,
+                        print: 'all'
                     }
                 }, this);
 
                 this.entityCollection.fetch({
                     data: {
                         text: input,
+                        fieldtext: this.fieldText,
                         index: this.index
                     }
-                });
+                }, this);
+
+                this.fieldsModel.fetch({
+                    data: {
+                        index: this.index,
+                        group_fields_by_type: true,
+                        fieldtype: ["parametric"],
+                        max_values: 1000
+                    },
+                }, this)
+
+                var parametricFields = this.fieldsModel.get('all_fields')
+
+                if(parametricFields) {
+                    this.parametricRequest(input, _.map(parametricFields, function(field) {
+                        return field.replace("DOCUMENT/","");
+                    }).join(','))
+                }
 
                 vent.navigate('find/search/' + encodeURIComponent(input), {trigger: false});
             }
@@ -362,6 +446,45 @@ define([
                 this.indexesCollection.once('sync', function() {
                     this.searchRequest(input);
                 }, this);
+            }
+        },
+
+        parametricRequest: function(text,fieldName){
+            this.fieldText = this.buildFieldTextFromParams();
+            this.fieldValuesModel.fetch({
+                data: {
+                    index: this.index,
+                    text: text,
+                    fieldtext: this.fieldText,
+                    fieldname: fieldName,
+                    max_values: 20,
+                    sort: "alphabetical"
+                }
+            }, this);
+        },
+
+        buildFieldTextFromParams: function(){
+            if ($('ul.parametric-values').length){
+                var paramFields = $('ul.parametric-values');
+
+                this.fieldTextParams = new Object();
+
+                return _.chain(paramFields).map(function(ul) {
+                    var $ul = $(ul)
+                    var fieldName = $ul.attr('data-fieldName')
+
+                    this.fieldTextParams[fieldName] = new Array();
+
+                    return _.chain($ul.find('li')).filter(function(li) {
+                        return $(li).find('input').prop('checked');
+                    }, this).map(function(li) {
+                        this.fieldTextParams[fieldName].push($(li).attr('data-fieldValue'));
+                        return 'MATCH{' + $(li).attr('data-fieldValue') + '}:' + fieldName
+                    }, this).value();
+                }, this).flatten().value().join('+AND+');
+            }
+            else{
+                return null;
             }
         }
     });

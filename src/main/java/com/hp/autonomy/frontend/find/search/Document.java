@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import lombok.Data;
 import lombok.Setter;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Data
@@ -23,14 +24,16 @@ public class Document {
     private final String indexes;
     private final String title;
     private final String summary;
+    private final String description;
 
-    private Document(final String reference, final double weight, final List<String> links, final String indexes, final String title, final String summary) {
+    private Document(final String reference, final double weight, final List<String> links, final String indexes, final String title, final String summary, final String description) {
         this.reference = reference;
         this.weight = weight;
         this.links = links;
         this.indexes = indexes;
         this.title = title;
         this.summary = summary;
+        this.description = description;
     }
 
     @Setter
@@ -47,8 +50,10 @@ public class Document {
         @SuppressWarnings("FieldMayBeFinal")
         private String summary = "";
 
+        private List<String> description = Arrays.asList("");
+
         public Document build() {
-            return new Document(reference, weight, links, indexes, title, summary);
+            return new Document(reference, weight, links, indexes, title, summary, description.get(0));
         }
 
     }

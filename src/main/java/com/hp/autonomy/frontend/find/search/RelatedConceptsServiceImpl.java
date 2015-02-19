@@ -24,12 +24,13 @@ public class RelatedConceptsServiceImpl implements RelatedConceptsService {
     private ApiKeyService apiKeyService;
 
     @Override
-    public List<Entity> findRelatedConcepts(final String text, final String indexes) {
+    public List<Entity> findRelatedConcepts(final String text, final String indexes, final String fieldtext) {
         final Map<String, Object> parameters = new HashMap<>();
         parameters.put("text", text);
         parameters.put("indexes", indexes);
+        parameters.put("fieldtext", fieldtext);
         parameters.put("apikey", apiKeyService.getApiKey());
 
-        return restTemplate.getForObject("https://api.idolondemand.com/1/api/sync/findrelatedconcepts/v1?apikey={apikey}&text={text}&indexes={indexes}", Entities.class, parameters).getEntities();
+        return restTemplate.getForObject("https://api.idolondemand.com/1/api/sync/findrelatedconcepts/v1?apikey={apikey}&text={text}&indexes={indexes}&field_text={fieldtext}", Entities.class, parameters).getEntities();
     }
 }
