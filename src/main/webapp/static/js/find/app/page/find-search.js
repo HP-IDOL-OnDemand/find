@@ -26,11 +26,10 @@ define([
     'text!find/templates/app/page/top-results-popover-contents.html',
     'text!find/templates/app/page/parametric-container.html',
     'text!find/templates/app/page/parametric-value-container.html',
-    'text!find/templates/app/page/adverts.html',
     'colorbox'
 ], function(BasePage, EntityCollection, DocumentsCollection, IndexesCollection,SimilarDocumentsCollection, FieldsModel, FieldValuesModel, router, vent, i18n, template, resultsTemplate,
             suggestionsTemplate, loadingSpinnerTemplate, colorboxControlsTemplate, indexPopover, indexPopoverContents, topResultsPopoverContents, parametricContainer,
-            paramValContainer, advertsTemplate) {
+            paramValContainer) {
 
     return BasePage.extend({
 
@@ -43,7 +42,6 @@ define([
         topResultsPopoverContents: _.template(topResultsPopoverContents),
         parametricContainer: _.template(parametricContainer),
         paramValContainer: _.template(paramValContainer),
-        advertsTemplate: _.template(advertsTemplate),
 
         events: {
             'keyup .find-input': 'keyupAnimation',
@@ -207,7 +205,6 @@ define([
 
                 this.$('.main-results-content .no-results').remove();
 
-                this.$('.adverts-container').append(_.template(advertsTemplate))
 
             });
 
